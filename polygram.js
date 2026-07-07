@@ -2169,8 +2169,15 @@ function createBot(token) {
       } else if (data.startsWith('sess:')) {
         const chatId = ctx.callbackQuery.message?.chat?.id?.toString();
         if (chatId && dispatchSlashCommand.handleSessionCallback) {
-          const sendReply = (text) => tg(bot, 'sendMessage', { chat_id: chatId, text }, { source: 'session-picker-reply', botName: BOT_NAME });
+          const sendReply = (text) => tg(bot, 'sendMessage', { chat_id: chatId, text }, { source: 'picker-reply', botName: BOT_NAME });
           await dispatchSlashCommand.handleSessionCallback(data, sendReply);
+        }
+        await ctx.answerCallbackQuery().catch(() => {});
+      } else if (data.startsWith('cmd:')) {
+        const chatId = ctx.callbackQuery.message?.chat?.id?.toString();
+        if (chatId && dispatchSlashCommand.handleCommandCallback) {
+          const sendReply = (text) => tg(bot, 'sendMessage', { chat_id: chatId, text }, { source: 'cmd-picker-reply', botName: BOT_NAME });
+          await dispatchSlashCommand.handleCommandCallback(data, sendReply);
         }
         await ctx.answerCallbackQuery().catch(() => {});
       } else {
@@ -2631,44 +2638,17 @@ async function main() {
   (async () => {
     try {
       // ── Base Claude Code commands (always present) ──────────────────
+      // Core 8 commands shown in Telegram / menu. Full list via /command picker.
       const baseCommands = [
-        { command: 'help',        description: 'Show help and available commands' },
-        { command: 'model',       description: 'Switch AI model (sonnet, opus, haiku)' },
-        { command: 'effort',      description: 'Set reasoning effort (low, medium, high, xhigh, max)' },
-        { command: 'context',     description: 'Show context window usage breakdown' },
-        { command: 'compact',     description: 'Compact conversation context to save tokens' },
-        { command: 'clear',       description: 'Clear conversation and start fresh' },
-        { command: 'new',         description: 'Start a brand-new session' },
-        { command: 'reset',       description: 'Reset the current session' },
-        { command: 'stop',        description: 'Stop the current turn immediately' },
+        { command: 'stop',        description: 'Stop the current turn' },
+        { command: 'model',       description: 'Switch AI model' },
         { command: 'sessions',    description: 'Browse and resume past sessions' },
-        { command: 'resume',      description: 'Resume a session by ID' },
         { command: 'cd',          description: 'Switch working directory' },
-        { command: 'cancel',      description: 'Cancel the current turn' },
-        { command: 'config',      description: 'View or change bot settings' },
-        { command: 'stats',       description: 'Show token usage and cost stats' },
-        { command: 'cost',        description: 'Show cost of current session' },
-        { command: 'status',      description: 'Show current session status' },
-        { command: 'doctor',      description: 'Run environment diagnostics' },
-        { command: 'init',        description: 'Generate project CLAUDE.md file' },
-        { command: 'review',      description: 'Code review current changes' },
-        { command: 'diff',        description: 'Show current git diff' },
-        { command: 'rewind',      description: 'Rewind conversation to earlier checkpoint' },
-        { command: 'resume',      description: 'Resume a previous session' },
-        { command: 'rename',      description: 'Rename the current session' },
-        { command: 'memory',      description: 'Open memory files for editing' },
-        { command: 'agents',      description: 'Manage background subagents' },
-        { command: 'mcp',         description: 'Manage MCP server connections' },
-        { command: 'plugin',      description: 'Manage Claude Code plugins' },
-        { command: 'theme',       description: 'Change or create UI themes' },
-        { command: 'export',      description: 'Export current conversation' },
-        { command: 'ide',         description: 'Connect to IDE (VS Code, JetBrains)' },
-        { command: 'permissions', description: 'Manage tool permission rules' },
-        { command: 'code_review', description: 'Review code for correctness bugs' },
-        { command: 'add_dir',     description: 'Add working directory to session' },
-        { command: 'pr_comments', description: 'Fetch GitHub PR review comments' },
-        { command: 'release_notes', description: 'View latest Claude Code release notes' },
-        { command: 'terminal_setup', description: 'Configure terminal integration' },
+        { command: 'help',        description: 'Show help' },
+        { command: 'context',     description: 'Show context usage' },
+        { command: 'compact',     description: 'Compact context' },
+        { command: 'new',         description: 'Start a new session' },
+        { command: 'command',     description: 'Search all commands and skills' },
       ];
 
       // ── Dynamically discovered skills ──────────────────────────────
@@ -2779,41 +2759,17 @@ async function main() {
 
     // Expose manual resync for /reload command
     async function syncCommands() {
+      // Core 9 commands for Telegram / menu. Full list via /command picker.
       const baseCommands = [
-        { command: 'help', description: 'Show help and available commands' },
+        { command: 'stop', description: 'Stop the current turn' },
         { command: 'model', description: 'Switch AI model' },
-        { command: 'stop', description: 'Stop current turn' },
-        { command: 'clear', description: 'Clear conversation' },
-        { command: 'status', description: 'Session status' },
+        { command: 'sessions', description: 'Browse and resume past sessions' },
+        { command: 'cd', description: 'Switch working directory' },
+        { command: 'help', description: 'Show help' },
+        { command: 'context', description: 'Show context usage' },
         { command: 'compact', description: 'Compact context' },
-        { command: 'context', description: 'Context usage' },
-        { command: 'config', description: 'Bot settings' },
-        { command: 'doctor', description: 'Environment diagnostics' },
-        { command: 'init', description: 'Generate CLAUDE.md' },
-        { command: 'diff', description: 'Git diff' },
-        { command: 'review', description: 'Code review' },
-        { command: 'memory', description: 'Memory files' },
-        { command: 'agents', description: 'Manage subagents' },
-        { command: 'mcp', description: 'MCP servers' },
-        { command: 'plugin', description: 'Plugins' },
-        { command: 'permissions', description: 'Permission rules' },
-        { command: 'export', description: 'Export conversation' },
-        { command: 'ide', description: 'IDE integration' },
-        { command: 'resume', description: 'Resume session' },
-        { command: 'rename', description: 'Rename session' },
-        { command: 'effort', description: 'Reasoning effort' },
-        { command: 'cancel', description: 'Cancel turn' },
-        { command: 'reset', description: 'Reset session' },
-        { command: 'new', description: 'New session' },
-        { command: 'rewind', description: 'Rewind checkpoint' },
-        { command: 'theme', description: 'Change theme' },
-        { command: 'stats', description: 'Usage stats' },
-        { command: 'cost', description: 'Session cost' },
-        { command: 'code_review', description: 'Code review for bugs' },
-        { command: 'add_dir', description: 'Add working directory' },
-        { command: 'pr_comments', description: 'Fetch PR comments' },
-        { command: 'release_notes', description: 'Release notes' },
-        { command: 'terminal_setup', description: 'Terminal setup' },
+        { command: 'new', description: 'Start a new session' },
+        { command: 'command', description: 'Search all commands and skills' },
       ];
       const dmCommands = [
         { command: 'login', description: 'Sign in' },
