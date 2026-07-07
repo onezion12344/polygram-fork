@@ -2083,13 +2083,16 @@ function createBot(token) {
     });
   });
 
-  // Auto-update config when a forum topic is renamed
-  bot.on('forum_topic_edited', async (ctx) => {
-    const { chat, message_thread_id, name } = ctx.forumTopicEdited;
-    if (!chat || !message_thread_id || !name) return;
+  // Auto-update config when a forum topic is renamed.
+  // grammy has no built-in 'forum_topic_edited' filter; use 'message' with a guard.
+  bot.on('message', async (ctx, next) => {
+    if (!ctx.message?.forum_topic_edited) return next?.();
+    const { chat, message_thread_id, name } = ctx.message.forum_topic_edited;
+    if (!chat || !message_thread_id || !name) return next?.();
     const chatId = chat.id.toString();
     const chatConfig = config.chats[chatId];
     if (!chatConfig || !chatConfig.topics) return;
+    if (!chatConfig.isolateTopics) return;
     const topicKey = String(message_thread_id);
     const topic = chatConfig.topics[topicKey];
     if (!topic || topic.name === name) return;
@@ -2097,6 +2100,7 @@ function createBot(token) {
     try { saveConfig(); } catch (err) { console.error(`[${BOT_NAME}] topic rename save failed: ${err.message}`); }
     console.log(`[${BOT_NAME}] topic renamed: ${chatId}/${message_thread_id} → "${name}"`);
     logEvent('topic-renamed', { chat_id: chatId, thread_id: topicKey, new_name: name });
+    return next?.();
   });
 
   bot.on('message', async (ctx) => {
