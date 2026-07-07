@@ -1,0 +1,36 @@
+{
+  "_comment": "polygram config — per-chat Claude sessions, multi-bot, @mention gating",
+  "bots": {
+    "main-bot": {
+      "token": "YOUR_BOT_TOKEN_HERE",
+      "adminChatId": "YOUR_TELEGRAM_USER_ID",
+      "allowConfigCommands": true,
+      "streamMinChars": 30,
+      "streamThrottleMs": 1000,
+      "reactions": false,
+      "pairedChatDefaults": {
+        "cwd": "/path/to/workspace",
+        "model": "sonnet",
+        "effort": "medium",
+        "timeout": 600
+      }
+    }
+  },
+  "chats": {
+    "YOUR_CHAT_ID": {
+      "name": "My DM",
+      "bot": "main-bot",
+      "model": "sonnet",
+      "effort": "medium",
+      "cwd": "/path/to/workspace",
+      "timeout": 600,
+      "compactionWarnings": true
+    }
+  },
+  "defaults": {
+    "model": "sonnet",
+    "effort": "medium",
+    "timeout": 600
+  },
+  "maxWarmProcesses": 10
+}

@@ -1,0 +1,9 @@
+logs/
+*.db
+*.db-shm
+*.db-wal
+*.pid
+config.json
+node_modules/
+*.log
+auto-config-watcher.sh

@@ -1,0 +1,72 @@
+{
+  "name": "polygram",
+  "version": "0.17.11",
+  "description": "Telegram daemon for Claude Code that preserves the OpenClaw per-chat session model. Migration path for OpenClaw users moving to Claude Code.",
+  "main": "lib/ipc/client.js",
+  "bin": {
+    "polygram": "polygram.js",
+    "polygram-split-db": "scripts/split-db.js",
+    "polygram-ipc": "scripts/ipc-smoke.js",
+    "polygram-doctor": "scripts/doctor.js"
+  },
+  "files": [
+    "polygram.js",
+    "lib/",
+    "migrations/",
+    "scripts/split-db.js",
+    "scripts/ipc-smoke.js",
+    "scripts/doctor.js",
+    "skills/",
+    "commands/",
+    ".claude-plugin/",
+    "ops/polygram.plist.example",
+    "ops/README.md",
+    "config.example.json"
+  ],
+  "scripts": {
+    "test": "node --test --test-force-exit tests/*.test.js",
+    "coverage": "node --test --test-force-exit --experimental-test-coverage tests/*.test.js",
+    "coverage:lcov": "mkdir -p coverage && node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/*.test.js",
+    "start": "node polygram.js",
+    "split-db": "node scripts/split-db.js",
+    "ipc-smoke": "node scripts/ipc-smoke.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "telegram",
+    "openclaw",
+    "openclaw-migration",
+    "claude-code",
+    "claude",
+    "per-chat-session",
+    "bot",
+    "daemon",
+    "multi-bot",
+    "sqlite",
+    "transcript",
+    "history",
+    "telegram-agent"
+  ],
+  "author": "Ivan Shumkov <ivanshumkov@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shumkov/polygram.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shumkov/polygram/issues"
+  },
+  "homepage": "https://github.com/shumkov/polygram#readme",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.2.123",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^12.9.0",
+    "grammy": "^1.42.0",
+    "markdown-it": "^14.1.1",
+    "marked": "^18.0.2",
+    "zod": "^4.0.0"
+  }
+}
