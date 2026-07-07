@@ -1,0 +1,39 @@
+name: Auto-Review & Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          for f in polygram.js lib/*.js lib/**/*.js lib/**/**/*.js; do
+            node --check "$f" || exit 1
+          done
+
+  auto-merge:
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.actor != 'renovate[bot]'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Approve PR
+        run: gh pr review "$PR_URL" --approve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+      - name: Enable auto-merge
+        run: gh pr merge "$PR_URL" --auto --squash --delete-branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
