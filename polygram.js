@@ -2769,7 +2769,7 @@ async function main() {
         { command: 'context', description: 'Show context usage' },
         { command: 'compact', description: 'Compact context' },
         { command: 'new', description: 'Start a new session' },
-        { command: 'command', description: 'Search all commands and skills' },
+        { command: 'commandsearch', description: 'Search all commands and skills' },
       ];
       const dmCommands = [
         { command: 'login', description: 'Sign in' },
