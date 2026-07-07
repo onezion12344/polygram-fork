@@ -2083,6 +2083,22 @@ function createBot(token) {
     });
   });
 
+  // Auto-update config when a forum topic is renamed
+  bot.on('forum_topic_edited', async (ctx) => {
+    const { chat, message_thread_id, name } = ctx.forumTopicEdited;
+    if (!chat || !message_thread_id || !name) return;
+    const chatId = chat.id.toString();
+    const chatConfig = config.chats[chatId];
+    if (!chatConfig || !chatConfig.topics) return;
+    const topicKey = String(message_thread_id);
+    const topic = chatConfig.topics[topicKey];
+    if (!topic || topic.name === name) return;
+    topic.name = name;
+    try { saveConfig(); } catch (err) { console.error(`[${BOT_NAME}] topic rename save failed: ${err.message}`); }
+    console.log(`[${BOT_NAME}] topic renamed: ${chatId}/${message_thread_id} → "${name}"`);
+    logEvent('topic-renamed', { chat_id: chatId, thread_id: topicKey, new_name: name });
+  });
+
   bot.on('message', async (ctx) => {
     if (!isWellFormedMessage(ctx.message)) {
       logEvent('malformed-update', {
@@ -2146,6 +2162,13 @@ function createBot(token) {
         await handleConfigCallback(ctx);
       } else if (data.startsWith('q:')) {
         if (questionHandlers) await questionHandlers.handleQuestionCallback(ctx);
+      } else if (data.startsWith('sess:')) {
+        const chatId = ctx.callbackQuery.message?.chat?.id?.toString();
+        if (chatId && dispatchSlashCommand.handleSessionCallback) {
+          const sendReply = (text) => tg(bot, 'sendMessage', { chat_id: chatId, text }, { source: 'session-picker-reply', botName: BOT_NAME });
+          await dispatchSlashCommand.handleSessionCallback(data, sendReply);
+        }
+        await ctx.answerCallbackQuery().catch(() => {});
       } else {
         await handleApprovalCallback(ctx);
       }
@@ -2717,8 +2740,8 @@ async function main() {
       if (restartTimer) clearTimeout(restartTimer);
       restartTimer = setTimeout(() => {
         console.log('[polygram] source change detected — graceful restart...');
-        process.kill(process.pid, 'SIGTERM'); // triggers clean shutdown → launchd restarts
-      }, 3000);
+        process.kill(process.pid, 'SIGTERM');
+      }, 10000);
     }
 
     // Watch config file
@@ -3095,6 +3118,7 @@ async function main() {
     getOrSpawnForChat, parsePairCodeArgs,
     modelVersionsDesc: MODEL_VERSIONS_DESC, saveConfig,
     botName: BOT_NAME, logEvent, logger: console,
+    tg, bot, // for inline keyboards (session picker)
   });
   console.log('[polygram] using SDK ProcessManager');
 
