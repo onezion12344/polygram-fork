@@ -3474,6 +3474,10 @@ async function main() {
     console.error(`[${BOT_NAME}] Fatal:`, err.message);
   });
 
+  // Wait 15s before polling — gives any previous instance's Telegram
+  // long-poll connection time to fully drop, preventing 409 Conflict.
+  await new Promise(r => setTimeout(r, 15_000));
+  console.log('[polygram] pre-poll delay complete, starting polling...');
   const watchdogTimer = startPollWatchdog(bot, { logEvent });
   process.once('exit', () => clearInterval(watchdogTimer));
 
