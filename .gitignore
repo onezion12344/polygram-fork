@@ -7,3 +7,4 @@ config.json
 node_modules/
 *.log
 auto-config-watcher.sh
+inbox/

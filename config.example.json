@@ -1,5 +1,5 @@
 {
-  "_comment": "polygram config — per-chat Claude sessions, multi-bot, @mention gating",
+  "_comment": "polygram config — copy to config.json and fill in your values",
   "bots": {
     "main-bot": {
       "token": "YOUR_BOT_TOKEN_HERE",
@@ -7,30 +7,70 @@
       "allowConfigCommands": true,
       "streamMinChars": 30,
       "streamThrottleMs": 1000,
+      "attachmentConcurrency": 6,
+      "queueWarnThreshold": 20,
+      "replayWindowMs": 180000,
+      "chrome": false,
       "reactions": false,
       "pairedChatDefaults": {
-        "cwd": "/path/to/workspace",
+        "agent": "tg-router",
+        "cwd": "/Users/yourname",
         "model": "sonnet",
         "effort": "medium",
-        "timeout": 600
+        "timeout": 1200
+      },
+      "voice": {
+        "enabled": true,
+        "provider": "openai",
+        "openai": { "apiKeyEnv": "OPENAI_API_KEY", "model": "whisper-1" },
+        "language": "auto",
+        "maxDurationSec": 600
+      },
+      "approvals": {
+        "adminChatId": "YOUR_TELEGRAM_USER_ID",
+        "gatedTools": [
+          "Bash(sudo *)", "Bash(rm -rf *)", "Bash(curl * | sh)", "Bash(> /dev/*)",
+          "Write(~/.claude/*)", "Write(~/.hermes/*)",
+          "Edit(~/.claude/settings.json)", "Edit(~/.zshrc)", "Edit(~/.ssh/*)",
+          "Task(computer-use-*)",
+          "mcp__open_browser_use__*", "mcp__open-computer-use__*"
+        ],
+        "decisionTimeoutMs": 300000
       }
     }
   },
   "chats": {
     "YOUR_CHAT_ID": {
-      "name": "My DM",
+      "name": "Example DM",
       "bot": "main-bot",
       "model": "sonnet",
       "effort": "medium",
-      "cwd": "/path/to/workspace",
-      "timeout": 600,
+      "cwd": "/Users/yourname",
+      "timeout": 1200,
       "compactionWarnings": true
+    },
+    "YOUR_GROUP_ID": {
+      "name": "Example Group",
+      "bot": "main-bot",
+      "model": "sonnet",
+      "effort": "medium",
+      "cwd": "/Users/yourname",
+      "requireMention": true,
+      "isolateTopics": true,
+      "compactionWarnings": true,
+      "allowedSenders": ["YOUR_TELEGRAM_USER_ID"]
     }
   },
   "defaults": {
     "model": "sonnet",
     "effort": "medium",
-    "timeout": 600
+    "timeout": 1200,
+    "inboxRetentionDays": 30
   },
-  "maxWarmProcesses": 10
+  "maxWarmProcesses": 10,
+  "attachmentLimits": {
+    "maxCount": 5,
+    "maxTotalMb": 20,
+    "maxFileMb": 10
+  }
 }

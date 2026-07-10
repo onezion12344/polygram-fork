@@ -16,6 +16,14 @@ Key modifications from upstream (see `git log` for full history):
 - **Edit correction**: injects before/after context (`"Was: X. Now: Y"`)
 - **Auto-resume**: kills stuck process before retrying (was: retry into same hung process)
 - **Chinese abort phrases**: `停下, 停止, 取消, 退出, 算了, 别做了`
+- **tg-router agent**: Custom agent with subagent-first routing, Karpathy 4 principles, verification loop, auto-skill pipeline
+- **Research integration**: `research` + `cross-verify-search` + `double-check` + `onezion-research-pipeline` auto-fire before decisions
+- **Multi-round verification**: Subagent internal loop (define→attempt→verify→gap→bridge) + main agent gate review (Iron Law)
+- **Long-running monitors**: Background subagents for deployed features with periodic health checks and self-healing
+- **Approval system**: Gated tools (sudo, rm -rf, config edits, browser automation) → admin DM approval cards
+- **Auto-resume-after-reload**: Config/skills changes → kill warm → send resume prompt to all chats
+- **Hermes skill sync**: 18 research/agent skills symlinked from ~/.hermes/skills/ to ~/.claude/skills/
+- **No-edit streaming**: Each thinking step is a NEW message bubble, never overwrites previous ones
 
 ## Architecture
 
@@ -43,6 +51,30 @@ Telegram (grammy long-poll) → polygram.js (main)
 - `pm.send()` is serialized per session via `stdinLock` — prevents Claude batching multiple user messages
 - ProcessManager LRU eviction skips inFlight sessions and sessions with live background jobs
 - CLI backend (tmux + channels bridge) exists but SDK backend is the default
+
+## Agent Architecture
+
+The bot uses a custom **tg-router** agent (`~/.claude/agents/tg-router.md`, 233K★ Superpowers-inspired):
+- **Subagent-First**: All non-trivial tasks → `Task(isolation="worktree", permissionMode="bypassPermissions")`
+- **Karpathy's 4 Principles**: Think first, simplest thing, surgical changes, verify
+- **Multi-Round Verification Loop**: Subagent internal self-check → main agent gate review
+- **Auto-Skill Pipeline**: brainstorming → planning → subagent → code-review → verify → simplify → merge
+- **Research Pipeline**: research + cross-verify-search + double-check auto-fire before any factual decision
+- **Long-Running Monitors**: Background subagents that watch deployed features (sync, API, scraper) and self-heal
+- **Project Management**: Auto-creates `~/projects/{name}/` with CLAUDE.md + PROJECT.md
+
+Agent config is in `config.json` → `pairedChatDefaults.agent: "tg-router"`. Hot-reloaded on change.
+
+## Approval System
+
+Sensitive operations are gated behind approval cards sent to admin DM:
+- `Bash(sudo *)`, `Bash(rm -rf *)`, `Bash(curl * | sh)`, `Bash(> /dev/*)`
+- `Write(~/.claude/*)`, `Write(~/.hermes/*)`
+- `Edit(~/.claude/settings.json)`, `Edit(~/.zshrc)`, `Edit(~/.ssh/*)`
+- `Task(computer-use-*)`, browser/computer-use MCP tools
+- All other tools → `bypassPermissions` (no approval needed)
+
+Config: `config.bot.approvals.gatedTools`. Admin taps Allow/Deny in DM.
 
 ## Common Modifications
 
