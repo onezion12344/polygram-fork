@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280, height=720">
+<title>Polygram Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px; height: 720px;
+    background: #0a0e1a;
+    font-family: -apple-system, 'SF Pro Display', sans-serif;
+    color: #e8e8f0;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .scene { position: absolute; width: 100%; text-align: center; transition: opacity 0.6s; }
+  .hidden { opacity: 0; pointer-events: none; }
+
+  h1 { font-size: 48px; font-weight: 700; margin-bottom: 8px; }
+  h1 span { color: #5eead4; }
+  h2 { font-size: 20px; color: #8080a8; font-weight: 400; margin-bottom: 24px; }
+
+  pre { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px; padding: 24px 32px; text-align: left;
+        font-family: 'SF Mono', monospace; font-size: 15px; line-height: 1.8;
+        display: inline-block; color: #a0a0c0; }
+  pre .cmd { color: #5eead4; }
+  pre .out { color: #8080a8; }
+  pre .hl { color: #f0f0f8; }
+
+  .step { position: absolute; bottom: 40px; left: 0; right: 0; text-align: center; }
+  .step-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+              margin: 0 6px; background: rgba(255,255,255,0.15); transition: all 0.3s; }
+  .step-dot.active { background: #5eead4; box-shadow: 0 0 8px rgba(94,234,212,0.4); }
+
+  .label { position: absolute; top: 30px; right: 40px; font-size: 13px; color: rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+<div class="label">demo · github.com/onezion12344/polygram-fork</div>
+
+<!-- Scene 1: The Problem -->
+<div class="scene" id="s1">
+  <h1>Before Polygram</h1>
+  <h2>You type a task in Telegram. Then you wait. And wait. No feedback. No subagents.</h2>
+  <pre><span class="out">TG: @bot 帮我重构 auth 模块
+...
+[5 minutes of silence]
+...
+TG: 还在吗？</span></pre>
+</div>
+
+<!-- Scene 2: tg-router -->
+<div class="scene hidden" id="s2">
+  <h1>Meet <span>tg-router</span></h1>
+  <h2>Your CTO-level orchestrator. Subagent-first. Karpathy's 4 Rules. Auto-merge.</h2>
+  <pre><span class="cmd">TG: @bot 帮我重构 auth</span>
+<span class="out">⏳ Working on it — spawning subagent…</span>
+<span class="cmd">🔧 Subagent (worktree) → refactoring</span>
+<span class="cmd">🔍 Quality Gate → reviewing</span>
+<span class="out">✅ Done. LoginService + LoginValidator created.</span></pre>
+</div>
+
+<!-- Scene 3: Pipeline -->
+<div class="scene hidden" id="s3">
+  <h1>The <span>Pipeline</span></h1>
+  <h2>8 stages, all automatic. You only see "Done."</h2>
+  <pre><span class="hl">📱 TG Message</span>
+<span class="out">  → 🔍 Research (AnySearch + double-check)</span>
+<span class="out">  → 🧠 Brainstorm + Plan</span>
+<span class="out">  → 🔧 Subagent spawn (worktree isolation)</span>
+<span class="out">  → 🔄 Verification Loop (self-check → gap → bridge)</span>
+<span class="out">  → 🔍 Quality Gate (security → correctness → quality)</span>
+<span class="out">  → 👤 Main Agent Review</span>
+<span class="out">  → 🔀 Auto-Merge → 💬 "Done."</span></pre>
+</div>
+
+<!-- Scene 4: Features -->
+<div class="scene hidden" id="s4">
+  <h1>Battle-Tested <span>Features</span></h1>
+  <h2>Production-ready since July 2026. 5 chats. 216 skills. 7 monitors.</h2>
+  <pre><span class="hl">✅ Subagent Orchestration</span>  <span class="out">worktree isolation, auto-spawn</span>
+<span class="hl">✅ Multi-Round Verification</span>  <span class="out">Iron Law: no evidence = not done</span>
+<span class="hl">✅ Research Pipeline</span>         <span class="out">AnySearch MCP + cross-verify</span>
+<span class="hl">✅ Auto-Briefing + Dreaming</span>  <span class="out">30min silence → insights to 5 backends</span>
+<span class="hl">✅ Long-Running Monitors</span>     <span class="out">self-healing background agents</span>
+<span class="hl">✅ Hot-Reload</span>                <span class="out">config/skills in 2s, no restart</span>
+<span class="hl">✅ Approval System</span>           <span class="out">gated tools → admin DM cards</span></pre>
+</div>
+
+<!-- Scene 5: Call to Action -->
+<div class="scene hidden" id="s5">
+  <h1><span>90%</span> of Tasks Auto-Complete</h1>
+  <h2>Only core decisions reach you. Stop micro-managing. Start orchestrating.</h2>
+  <pre><span class="hl">github.com/onezion12344/polygram-fork</span>
+<span class="out">Fork of polygram@shumkov v0.17.11</span>
+<span class="out">MIT License</span></pre>
+</div>
+
+<div class="step" id="dots">
+  <span class="step-dot active" data-s="1"></span>
+  <span class="step-dot" data-s="2"></span>
+  <span class="step-dot" data-s="3"></span>
+  <span class="step-dot" data-s="4"></span>
+  <span class="step-dot" data-s="5"></span>
+</div>
+
+<script>
+  let current = 1;
+  const total = 5;
+  const dots = document.querySelectorAll('.step-dot');
+
+  function show(n) {
+    document.querySelectorAll('.scene').forEach(s => s.classList.add('hidden'));
+    document.getElementById('s' + n).classList.remove('hidden');
+    dots.forEach(d => d.classList.remove('active'));
+    dots[n-1].classList.add('active');
+    current = n;
+  }
+
+  // Auto-advance every 6 seconds
+  setInterval(() => {
+    current = current >= total ? 1 : current + 1;
+    show(current);
+  }, 6000);
+
+  // Start
+  show(1);
+</script>
+</body>
+</html>
