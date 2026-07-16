@@ -246,3 +246,37 @@ Key persisted facts:
 - The "never editMessageText" pattern is intentional, not a bug
 - config.json is hot-reloaded; never restart to pick up config changes
 - `~/.claude/skills/` is scanned at startup and watched for changes — new skills appear as Telegram commands automatically
+
+## Pitfalls — Once and For All固化记录
+
+### 2026-07-17: Hot-reload SyntaxError crash loop
+**症状**: 编辑 lib/ 文件时 bot 反复重启，SyntaxError: Unexpected end of input
+**根因**: lib watcher 检测到文件变化 → 立即 SIGTERM → 新进程读到半截文件
+**修复**: `scheduleGracefulRestart()` 加 `node --check` 语法守卫，语法错就跳过重启
+**验证**: 编辑文件中途不再 crash
+**看哪里**: polygram.js:2762 `scheduleGracefulRestart`
+
+### 2026-07-17: Context 94 条消息 → API 400 hex escape
+**症状**: `API Error: 400 Failed to parse the request body as JSON: unexpected end of hex escape`
+**根因**: context 太深，某条消息的文本里含断裂 `\x` hex 序列，SDK 拼 JSON 时坏了
+**修复**: `sanitizeControlChars()` 加 `BROKEN_HEX_RE` 过滤，所有进 SDK 的文本自动剥掉断裂 hex
+**验证**: 不再出现此错误
+**看哪里**: sdk-process.js:52 `BROKEN_HEX_RE`
+
+### 2026-07-17: Mem0 启动时 Ollama 未运行
+**症状**: `ConnectionError: Failed to connect to Ollama`
+**根因**: Ollama 需要手动启动
+**修复**: 加 launchd plist `~/Library/LaunchAgents/com.onezion.ollama.plist`，开机自启
+**看哪里**: launchctl list com.onezion.ollama
+
+### 2026-07-11: Agent 不 propagate 到 warm session
+**症状**: 新 spawn 不用 tg-router，pipeline 不触发
+**根因**: `buildSdkOptions` 里 `effectiveAgent` 只读 `chatConfig.agent`，没有 fallback
+**修复**: 加 `config.bot?.pairedChatDefaults?.agent` fallback
+**看哪里**: build-options.js:76-78
+
+### 2026-07-10: 自然语言 abort 误触
+**症状**: 群里发"等一下"、"stop thinking" 就杀了 bot
+**根因**: `isAbortRequest` 里 HARD/SOFT phrases 匹配过头
+**修复**: 只保留 `/stop /abort /cancel` slash commands；群里必须 @bot
+**看哪里**: abort-detector.js:90-93, gate-inbound.js:93-102

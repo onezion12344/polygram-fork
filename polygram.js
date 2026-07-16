@@ -893,13 +893,21 @@ async function handleMessage(sessionKey, chatId, msg, bot) {
   }) || { ackEmitted: false };
 
   const prompt = formatPrompt(msg, sessionCtx, downloaded, { sessionKey });
-  const stopTyping = startTyping({
-    bot, chatId, threadId,
-    logger: { error: (m) => console.error(`[${label}] ${m}`) },
-    onEvent: (e) => logEvent(e.kind, {
-      bot: BOT_NAME, chat_id: e.chat_id, ...(e.detail || {}),
-    }),
-  });
+  // Typing indicator: only for primary turns. Steered messages skip it —
+  // the primary turn's typing loop already covers this chat.
+  const noopTyping = () => {};
+  noopTyping.pause = () => {};
+  noopTyping.resume = () => {};
+  let stopTyping = noopTyping;
+  if (!autosteer.willAutosteer(sessionKey, chatConfig)) {
+    stopTyping = startTyping({
+      bot, chatId, threadId,
+      logger: { error: (m) => console.error(`[${label}] ${m}`) },
+      onEvent: (e) => logEvent(e.kind, {
+        bot: BOT_NAME, chat_id: e.chat_id, ...(e.detail || {}),
+      }),
+    });
+  }
 
   const botCfg = config.bot || {};
   // 0.7.0: per-chat / per-bot link-preview opt-out (port from OpenClaw).
@@ -2138,6 +2146,26 @@ function createBot(token) {
     // lookups and the transcript skill.
     recordInbound(ctx.message);
 
+    // Download attachments for ALL messages, even unaddressed ones.
+    // Pre-0.17.12, downloads only happened inside handleMessage which is
+    // gated behind shouldHandle — files in un-@mentioned messages were
+    // stored in DB but never fetched from Telegram CDN, so Claude/Hermes
+    // couldn't see them. Now we download eagerly right after recordInbound
+    // so the file is on disk regardless of the gate outcome.
+    const _preAtts = extractAttachments(ctx.message);
+    if (_preAtts.length && downloadAttachments) {
+      const _token = config.bot?.token || '';
+      const _mid = db.getInboundMessageId({ chat_id: chatId, msg_id: ctx.message.message_id });
+      const _rows = _mid ? db.getAttachmentsByMessage(_mid) : [];
+      if (_rows.length) {
+        const _chatDir = path.join(INBOX_DIR, chatId);
+        fs.mkdirSync(_chatDir, { recursive: true });
+        downloadAttachments(bot, _token, chatId, ctx.message, _rows).catch(err => {
+          console.error(`[${BOT_NAME}] pre-gate attachment download: ${err.message}`);
+        });
+      }
+    }
+
     // Multi-photo / album upload: Telegram delivers siblings as separate
     // Messages sharing a media_group_id. Stash each and let the buffer
     // dispatch them together 500ms after the last sibling arrives.
@@ -2519,6 +2547,7 @@ async function main() {
 
   // Store for hot-reload access
   let hotReloadSyncCommands = null;
+  let resumeAllSessionsAfterReload = null;
 
   // ── Dynamic command discovery ───────────────────────────────────────
   // Scans plugin + user command dirs for skill .md files so new skills
@@ -2668,7 +2697,7 @@ async function main() {
       ];
 
       // Telegram limits: 100 commands per scope. Play it safe at 50.
-      const MAX_TOTAL = 50;
+      const MAX_TOTAL = 20;
       // Filter out skills with empty/broken descriptions
       const validSkills = newSkills.filter(c => c.description && c.description.length > 1 && c.description.length <= 256);
       const allUniversal = [...baseCommands, ...validSkills].slice(0, MAX_TOTAL);
@@ -2716,6 +2745,11 @@ async function main() {
           console.log('[polygram] config hot-reloaded');
           // Re-sync commands
           syncCommands().catch(err => console.error('[polygram] hot-reload sync failed:', err.message));
+          // Auto-resume: kill warm processes so they respawn with new config,
+          // then send continuation prompts to all chats with recent activity.
+          if (typeof resumeAllSessionsAfterReload === 'function') {
+            try { resumeAllSessionsAfterReload(); } catch (e) { console.error('[polygram] auto-resume failed:', e.message); }
+          }
         } catch (err) {
           console.error('[polygram] config hot-reload parse error:', err.message);
         }
@@ -2726,6 +2760,16 @@ async function main() {
     function scheduleGracefulRestart() {
       if (restartTimer) clearTimeout(restartTimer);
       restartTimer = setTimeout(() => {
+        // Syntax guard: only restart if the changed files are parseable.
+        // Mid-edit half-written files cause SyntaxError crash loops.
+        // Skip restart if any tracked .js file has syntax errors.
+        try {
+          const { execSync } = require('child_process');
+          execSync(`node --check "${__filename}"`, { timeout: 5000, stdio: 'pipe' });
+        } catch {
+          console.log('[polygram] syntax error in lib/ — skipping restart (mid-edit?)');
+          return;
+        }
         console.log('[polygram] source change detected — graceful restart...');
         process.kill(process.pid, 'SIGTERM');
       }, 10000);
@@ -2997,6 +3041,27 @@ async function main() {
     callbacks: sdkCallbacks,
     budget: cap,
   });
+
+  // Auto-resume all sessions after config/agent change: kill warm processes,
+  // send continuation prompts. Called from hot-reload watcher on file change.
+  resumeAllSessionsAfterReload = () => {
+    const chats = Object.keys(config.chats).filter(id => id !== '7580128132'); // skip DM
+    for (const chatId of chats) {
+      const threadId = null;
+      const chatConfig = config.chats[chatId];
+      if (!chatConfig) continue;
+      const sessionKey = getSessionKey(chatId, null, chatConfig);
+      // Kill warm process → next message spawns with new config
+      pm.kill(sessionKey, 'config-reload').catch(() => {});
+      // Send continuation prompt to the chat
+      tg(bot, 'sendMessage', {
+        chat_id: chatId,
+        text: '🔄 Config updated — resuming with latest agent settings.',
+      }, { source: 'auto-resume-reload', botName: BOT_NAME }).catch(() => {});
+    }
+    console.log(`[polygram] auto-resumed ${chats.length} chats after config reload`);
+  };
+
   // formatConfigInfoText MUST be wired BEFORE createHandleConfigCallback
   // — the latter destructures formatConfigInfoText from its deps at
   // call time and captures the value (closure-by-value). v4 reviewer
